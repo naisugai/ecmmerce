@@ -6,7 +6,7 @@ class Customer::WebhooksController < ApplicationController
     sig_header = request.env['HTTP_STRIPE_SIGNATURE']
     endpoint_secret = Rails.application.credentials.dig(:stripe, :endpoint_secret)
     event = nil
-
+  
     begin
       event = Stripe::Webhook.construct_event(
         payload, sig_header, endpoint_secret
@@ -25,11 +25,9 @@ class Customer::WebhooksController < ApplicationController
 
     case event.type
     when 'checkout.session.completed'
-      puts "checkout.session.completedcheckout.session.completedcheckout.session.completed"
       session = event.data.object # sessionの取得
       customer = Customer.find(session.client_reference_id)
       return unless customer # 顧客が存在するかどうか確認
-      
       # トランザクション処理開始
       ApplicationRecord.transaction do
         order = create_order(session) # sessionを元にordersテーブルにデータを挿入
@@ -38,6 +36,7 @@ class Customer::WebhooksController < ApplicationController
           create_order_details(order, line_item) # 取り出したline_itemをorder_detailsテーブルに登録
         end
       end
+
       # トランザクション処理終了
       customer.cart_items.destroy_all # 顧客のカート内商品を全て削除
       redirect_to session.success_url
@@ -49,11 +48,11 @@ class Customer::WebhooksController < ApplicationController
   def create_order(session)
     Order.create!({
                     customer_id: session.client_reference_id,
-                    name: session.shipping.name,
-                    postal_code: session.shipping.address.postal_code,
-                    prefecture: session.shipping.address.state,
-                    address1: session.shipping.address.line1,
-                    address2: session.shipping.address.line2,
+                    name: session.shipping_details.name,
+                    postal_code: session.shipping_details.address.postal_code,
+                    prefecture: session.shipping_details.address.state,
+                    address1: session.shipping_details.address.line1,
+                    address2: session.shipping_details.address.line2,
                     postage: session.shipping_options[0].shipping_amount,
                     billing_amount: session.amount_total,
                     status: 'confirm_payment'
