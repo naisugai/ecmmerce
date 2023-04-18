@@ -16,6 +16,9 @@ class Customer::CheckoutsController < ApplicationController
       customer_email: current_customer.email,
       mode: 'payment',
       payment_method_types: ['card'],
+      payment_intent_data: {
+        capture_method: 'manual'
+      },
       line_items:,
       shipping_address_collection: {
         allowed_countries: ['JP']
